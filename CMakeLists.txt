@@ -17,7 +17,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 #! It is a good practice to set "WARNINGS_AS_ERRORS" ON,
 #  but sometimes it creates too much trouble, so default is OFF.
-set(WARNINGS_AS_ERRORS OFF)
+set(WARNINGS_AS_ERRORS ON)
 
 #! Always use PVS Studio while developing. 
 set(ENABLE_PVS_STUDIO OFF)
@@ -34,7 +34,7 @@ set(ENABLE_UBSan OFF)
 #! AddressSanitizer -- detects use after free or after scope exit,
 #  memory overflows and leaks.  
 #  Info: https://github.com/google/sanitizers/wiki/AddressSanitizer
-set(ENABLE_ASAN OFF)
+set(ENABLE_ASAN ON)
 #! ThreadSanitizer -- detects data races.
 set(ENABLE_TSan OFF)
 #! MemorySanitizer detects uninitialized memory reads 
@@ -55,10 +55,10 @@ include(cmake/CompilerWarnings.cmake)
 ##########################################################
 
 #! Project main executable source compilation
-add_executable(${PROJECT_NAME} main.cpp)
+add_executable(${PROJECT_NAME} main.cpp include/vector_d.hpp include/ratiod_t.hpp src/ratio_d_t.cpp include/iterators.hpp)
 
 #! Put path to your project headers
-target_include_directories(${PROJECT_NAME} PRIVATE options_parser)
+target_include_directories(${PROJECT_NAME} PRIVATE options_parser include)
 
 #! Add external packages
 # options_parser requires boost::program_options library
