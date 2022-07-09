@@ -53,6 +53,8 @@ include(cmake/CompilerWarnings.cmake)
 ##########################################################
 # Project files, packages, libraries and so on
 ##########################################################
+# Google tests
+add_subdirectory(Gtest)
 
 #! Project main executable source compilation
 add_executable(${PROJECT_NAME} main.cpp include/vector_d.hpp include/ratiod_t.hpp src/ratio_d_t.cpp include/iterators.hpp)

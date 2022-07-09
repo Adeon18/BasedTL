@@ -28,15 +28,15 @@ namespace bsd {
         using reverse_iterator = bsd::reverse_rnd_iterator<T>;
         using const_reverse_iterator = bsd::reverse_rnd_iterator<const T>;
 
-        explicit vector_d(size_t size) : m_size{size}, m_capacity{size} {
+        explicit vector_d(size_t size, const T& val=T()) : m_size{size}, m_capacity{size} {
             m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
 
             for (size_t i = 0; i < m_size; ++i) {
-                new (m_data + i) T{};
+                new (m_data + i) T{val};
             }
         }
 
-        vector_d() : vector_d{0} {};
+        vector_d() : vector_d(0) {};
 
         vector_d(const vector_d &v) : m_size{v.m_size}, m_capacity{v.m_capacity}{
             m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
@@ -45,15 +45,26 @@ namespace bsd {
                 new (m_data + i) T{v[i]};
             }
         }
-        // for now this is commented because it fucking breaks everything
-//        vector_d(std::initializer_list<T> l) : m_size{l.size()}, m_capacity{l.size()} {
-//            m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
-//            size_t i = 0;
-//            for (auto it = l.begin(); it != l.end(); ++it) {
-//                new (m_data + i) T{*it};
-//                ++i;
-//            }
-//        }
+
+        vector_d(vector_d&& v) : m_size{v.m_size}, m_capacity{v.m_capacity}{
+            m_data = std::move(v.data());
+            m_capacity = std::move(v.capacity());
+            m_size = std::move(v.size());
+
+            v.m_data = nullptr;
+            v.m_capacity = 0;
+            v.m_size = 0;
+        }
+
+        // This does not break everything anymore
+        vector_d(std::initializer_list<T> l) : m_size{l.size()}, m_capacity{l.size()} {
+            m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+            size_t i = 0;
+            for (auto it = l.begin(); it != l.end(); ++it) {
+                new (m_data + i) T{*it};
+                ++i;
+            }
+        }
 
         ~vector_d() {
             for (size_t i = 0; i < m_size; ++i) {
@@ -123,15 +134,18 @@ namespace bsd {
             std::swap(m_data, v.m_data);
         }
 
-        vector_d& front() {
+        T& front() {
             return m_data[0];
         }
 
-        vector_d& back() {
+        T& back() {
             return m_data[m_size - 1];
         }
 
-        vector_d& at(size_t pos) {
+        T& at(size_t pos) {
+            if (pos >= m_size) {
+                throw std::out_of_range("Vector index out of range :(");
+            }
             return m_data[pos];
         }
 
@@ -168,7 +182,7 @@ namespace bsd {
             return reverse_iterator(m_data - 1);
         }
 
-        const_reverse_iterator rcend() const {
+        const_reverse_iterator crend() const {
             return const_reverse_iterator(m_data - 1);
         }
 
@@ -319,6 +333,24 @@ namespace bsd {
         size_t m_size, m_capacity;
         T* m_data;
     };
+
+    template<typename T>
+    bool operator==(const vector_d<T>& lhs, const vector_d<T>& rhs) {
+        if (lhs.size() != rhs.size()) {
+            return false;
+        }
+        for (size_t i = 0; i < lhs.size(); ++i) {
+            if (lhs[i] != rhs[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template <typename T>
+    bool operator!=(const vector_d<T>& lhs, const vector_d<T>& rhs) {
+        return !(lhs == rhs);
+    }
 }
 
 #endif //TEMPLATE_VECTOR_D_HPP
