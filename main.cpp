@@ -3,9 +3,12 @@
 
 #include <iostream>
 #include <vector>
+#include <array>
 
 #include "ratiod_t.hpp"
 #include "vector_d.hpp"
+#include "array_d.hpp"
+
 
 
 int main() {
