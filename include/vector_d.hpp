@@ -9,6 +9,8 @@
 
 #include <cmath>
 #include <iostream>
+
+#include "consts.hpp"
 #include "iterators.hpp"
 
 /*
@@ -21,76 +23,84 @@
 namespace bsd {
     template<typename T>
     class vector_d {
-        static constexpr size_t CAP_MULTIPLIER = 2; // fucking stupid
     public:
         using iterator = bsd::rnd_iterator<T>;
         using const_iterator = bsd::rnd_iterator<const T>;
         using reverse_iterator = bsd::reverse_rnd_iterator<T>;
         using const_reverse_iterator = bsd::reverse_rnd_iterator<const T>;
 
-        explicit vector_d(size_t size, const T& val=T()) : m_size{size}, m_capacity{size} {
-            m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+        explicit vector_d(size_t size, const T& val=T()) : size_{size}, capacity_{size} {
+            data_ = static_cast<T*>(::operator new(sizeof(T) * capacity_));
 
-            for (size_t i = 0; i < m_size; ++i) {
-                new (m_data + i) T{val};
+            for (size_t i = 0; i < size_; ++i) {
+                new (data_ + i) T{val};
             }
         }
 
         vector_d() : vector_d(0) {};
 
-        vector_d(const vector_d &v) : m_size{v.m_size}, m_capacity{v.m_capacity}{
-            m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+        vector_d(const vector_d &v) : size_{v.size_}, capacity_{v.capacity_}{
+            data_ = static_cast<T*>(::operator new(sizeof(T) * capacity_));
 
-            for (size_t i = 0; i < m_size; ++i) {
-                new (m_data + i) T{v[i]};
+            for (size_t i = 0; i < size_; ++i) {
+                new (data_ + i) T{v[i]};
             }
         }
 
-        vector_d(vector_d&& v) : m_size{v.m_size}, m_capacity{v.m_capacity}{
-            m_data = std::move(v.data());
-            m_capacity = std::move(v.capacity());
-            m_size = std::move(v.size());
+        vector_d(vector_d&& v) noexcept : size_{v.size_}, capacity_{v.capacity_}{
+            data_ = std::move(v.data());
+            capacity_ = std::move(v.capacity());
+            size_ = std::move(v.size());
 
-            v.m_data = nullptr;
-            v.m_capacity = 0;
-            v.m_size = 0;
+            v.data_ = nullptr;
+            v.capacity_ = 0;
+            v.size_ = 0;
         }
 
         // This does not break everything anymore
-        vector_d(std::initializer_list<T> l) : m_size{l.size()}, m_capacity{l.size()} {
-            m_data = static_cast<T*>(::operator new(sizeof(T) * m_capacity));
+        vector_d(std::initializer_list<T> l) : size_{l.size()}, capacity_{l.size()} {
+            data_ = static_cast<T*>(::operator new(sizeof(T) * capacity_));
             size_t i = 0;
             for (auto it = l.begin(); it != l.end(); ++it) {
-                new (m_data + i) T{*it};
+                new (data_ + i) T{*it};
+                ++i;
+            }
+        }
+
+        vector_d(iterator begin, iterator end) : size_{static_cast<size_t>(end - begin)}, capacity_{static_cast<size_t>(end - begin)} {
+            data_ = static_cast<T*>(::operator new(sizeof(T) * capacity_));
+            size_t i = 0;
+            for (auto it = begin; it != end; ++it) {
+                new (data_ + i) T{*it};
                 ++i;
             }
         }
 
         ~vector_d() {
-            for (size_t i = 0; i < m_size; ++i) {
-                m_data[i].~T();
+            for (size_t i = 0; i < size_; ++i) {
+                data_[i].~T();
             }
-            ::operator delete (m_data);
+            ::operator delete (data_);
         }
 
         [[nodiscard]] bool empty() {
-            return (m_size == 0);
+            return (size_ == 0);
         }
 
         [[nodiscard]] size_t size() const{
-            return m_size;
+            return size_;
         }
 
         [[nodiscard]] size_t capacity() const{
-            return m_capacity;
+            return capacity_;
         }
 
         T& operator[](size_t pos) {
-            return m_data[pos];
+            return data_[pos];
         }
 
         T& operator[](size_t pos) const {
-            return m_data[pos];
+            return data_[pos];
         }
 
         vector_d& operator=(const vector_d &v) {
@@ -99,109 +109,122 @@ namespace bsd {
             return *this;
         }
 
+        // Look into this as is same as move constructor!
+        vector_d& operator=(vector_d&& v) {
+            data_ = std::move(v.data());
+            capacity_ = std::move(v.capacity());
+            size_ = std::move(v.size());
+
+            v.data_ = nullptr;
+            v.capacity_ = 0;
+            v.size_ = 0;
+
+            return *this;
+        }
+
         void reserve(size_t new_capacity) {
-            if (new_capacity > m_capacity) {
+            if (new_capacity > capacity_) {
                 T* new_data = static_cast<T*>(::operator new(sizeof(T) * new_capacity));
 
-                for (size_t i = 0; i < m_size; ++i) {
-                    new (new_data+i) T{m_data[i]};
-                    m_data[i].~T();
+                for (size_t i = 0; i < size_; ++i) {
+                    new (new_data+i) T{data_[i]};
+                    data_[i].~T();
                 }
-                ::operator delete(m_data);
-                m_data = new_data;
-                m_capacity = new_capacity;
+                ::operator delete(data_);
+                data_ = new_data;
+                capacity_ = new_capacity;
             }
         }
         // Just reallocates the capacity to fit the size.
         void shrink_to_fit() {
-            if (m_size < m_capacity) {
-                T* new_data = static_cast<T*>(::operator new(sizeof(T) * m_size));
+            if (size_ < capacity_) {
+                T* new_data = static_cast<T*>(::operator new(sizeof(T) * size_));
 
-                for (size_t i = 0; i < m_size; ++i) {
-                    new (new_data+i) T{m_data[i]};
-                    m_data[i].~T();
+                for (size_t i = 0; i < size_; ++i) {
+                    new (new_data+i) T{data_[i]};
+                    data_[i].~T();
                 }
-                ::operator delete(m_data);
-                m_data = new_data;
-                m_capacity = m_size;
+                ::operator delete(data_);
+                data_ = new_data;
+                capacity_ = size_;
             }
         }
 
         // For now uses std::swap, but plan to change it to custom swap later
         void swap(vector_d<T> &v) {
-            std::swap(m_size, v.m_size);
-            std::swap(m_capacity, v.m_capacity);
-            std::swap(m_data, v.m_data);
+            std::swap(size_, v.size_);
+            std::swap(capacity_, v.capacity_);
+            std::swap(data_, v.data_);
         }
 
         T& front() {
-            return m_data[0];
+            return data_[0];
         }
 
         T& back() {
-            return m_data[m_size - 1];
+            return data_[size_ - 1];
         }
 
         T& at(size_t pos) {
-            if (pos >= m_size) {
+            if (pos >= size_) {
                 throw std::out_of_range("Vector index out of range :(");
             }
-            return m_data[pos];
+            return data_[pos];
         }
 
         // Returns data pointer if the size is != 0 else nullptr
         T* data() {
-            return (m_size != 0) ? m_data : nullptr;
+            return (size_ != 0) ? data_ : nullptr;
         }
 
         iterator begin() {
-            return iterator(m_data);
+            return iterator(data_);
         }
 
         const_iterator cbegin() const {
-            return const_iterator(m_data);
+            return const_iterator(data_);
         }
 
         iterator end() {
-            return iterator(m_data + m_size);
+            return iterator(data_ + size_);
         }
 
         const_iterator cend() const {
-            return const_iterator(m_data + m_size);
+            return const_iterator(data_ + size_);
         }
 
         reverse_iterator rbegin() {
-            return reverse_iterator(m_data + m_size - 1);
+            return reverse_iterator(data_ + size_ - 1);
         }
 
         const_reverse_iterator crbegin() const {
-            return const_reverse_iterator(m_data + m_size - 1);
+            return const_reverse_iterator(data_ + size_ - 1);
         }
 
         reverse_iterator rend() {
-            return reverse_iterator(m_data - 1);
+            return reverse_iterator(data_ - 1);
         }
 
         const_reverse_iterator crend() const {
-            return const_reverse_iterator(m_data - 1);
+            return const_reverse_iterator(data_ - 1);
         }
 
         void clear() {
             for (auto it = begin(); it != end(); ++it) {
                 (*it).~T();
             }
-            m_size = 0;
+            size_ = 0;
         }
 
         void push_back(T el) {
-            if (m_size == m_capacity) {
-                reserve(std::max(CAP_MULTIPLIER * m_capacity, m_capacity + 1));
+            if (size_ == capacity_) {
+                reserve(std::max(CAP_MULTIPLIER * capacity_, capacity_ + 1));
             }
-            new (m_data + (m_size++)) T{el};
+            new (data_ + (size_++)) T{el};
         }
 
         void pop_back() {
-            m_data[--m_size].~T();
+            data_[--size_].~T();
         }
 
         // During reserve operation copies 2 times.
@@ -213,21 +236,21 @@ namespace bsd {
          * Returns iterator to the inserted element
          */
         iterator insert(iterator pos, size_t count, const T& el) {
-            if (m_size + count >= m_capacity) {
+            if (size_ + count >= capacity_) {
                 auto pos_idx = pos - begin();
-                reserve(std::max(CAP_MULTIPLIER * m_capacity, m_capacity + count));
-                pos = iterator(m_data + pos_idx);
+                reserve(std::max(CAP_MULTIPLIER * capacity_, capacity_ + count));
+                pos = iterator(data_ + pos_idx);
             }
             auto it = end();
             if (it == pos) {
                 for (size_t i = 0; i < count; ++i) {
-                    m_data[m_size] = el;
-                    m_size++;
+                    data_[size_] = el;
+                    size_++;
                 }
             } else {
                 --it;
                 for (int i = static_cast<int>(count) - 1; i >= 0; --i) {
-                    m_data[m_size+i] = T{*it};
+                    data_[size_ + i] = T{*it};
                     if (it == begin()) break;
                     if (count != 1) --it;
                 }
@@ -239,18 +262,18 @@ namespace bsd {
                     *pos = el;
                     ++pos;
                 }
-                m_size += count;
+                size_ += count;
             }
 
-            return pos - count;
+            return (end() - (pos - count + 1) > 1) ? pos - count : pos;
         }
 
         template<typename ... Args>
         void emplace_back(Args&&... args) {
-            if (m_size == m_capacity) {
-                reserve(std::max(CAP_MULTIPLIER * m_capacity, m_capacity + 1));
+            if (size_ == capacity_) {
+                reserve(std::max(CAP_MULTIPLIER * capacity_, capacity_ + 1));
             }
-            new (m_data + (m_size++)) T{std::forward<Args>(args)...};
+            new (data_ + (size_++)) T{std::forward<Args>(args)...};
         }
 
         /*
@@ -261,62 +284,63 @@ namespace bsd {
         template<typename ... Args>
         iterator emplace(const_iterator pos, Args&&... args) {
             iterator npos = (begin() + (pos - cbegin()));
-            if (m_size >= m_capacity) {
+            if (size_ >= capacity_) {
                 auto pos_idx = pos - cbegin();
-                reserve(std::max(CAP_MULTIPLIER * m_capacity, m_capacity + 1));
-                npos = iterator(m_data + pos_idx);
+                reserve(std::max(CAP_MULTIPLIER * capacity_, capacity_ + 1));
+                npos = iterator(data_ + pos_idx);
             }
             auto it = end();
             if (it == npos) {
-                new (m_data + (m_size++)) T{std::forward<Args>(args)...};
+                new (data_ + (size_++)) T{std::forward<Args>(args)...};
             } else {
                 --it;
-                m_data[m_size] = T{*it};
+                data_[size_] = T{*it};
                 while (it > npos - 1) {
                     *it = *(it - 1);
                     --it;
                 }
-                new (m_data + (npos - begin())) T{std::forward<Args>(args)...};
-                ++m_size;
+                new (data_ + (npos - begin())) T{std::forward<Args>(args)...};
+                ++size_;
             }
 
             return iterator(begin() + (npos - begin()));
         }
-
+        // Destroy the erased element and move others a position down.
         iterator erase(iterator pos) {
             if (pos == end()) {
                 return end();
             }
             auto it = begin() + (pos - begin());
+            // If element is last, just destroy it
             if (it == end() - 1) {
-                m_data[--m_size].~T();
+                data_[--size_].~T();
             } else {
                 while (it != end() - 1) {
                     *it = *(it + 1);
                     ++it;
                 }
-                m_data[--m_size].~T();
+                data_[--size_].~T();
             }
 
             return pos;
         }
 
         void resize(size_t count) {
-            if ( count < m_size ) {
-                for (size_t i = m_size - 1; i > count - 1; --i) {
-                    m_data[i].~T();
+            if (count < size_ ) {
+                for (size_t i = size_ - 1; i > count - 1; --i) {
+                    data_[i].~T();
                 }
-                m_size = count;
-            } else if (count < m_capacity) {
-                while (m_size < count) {
-                    new (m_data + m_size) T{};
-                    ++m_size;
+                size_ = count;
+            } else if (count < capacity_) {
+                while (size_ < count) {
+                    new (data_ + size_) T{};
+                    ++size_;
                 }
-            } else if (count > m_capacity) {
+            } else if (count > capacity_) {
                 reserve(count);
-                while (m_size < m_capacity) {
-                    new (m_data + m_size) T{};
-                    ++m_size;
+                while (size_ < capacity_) {
+                    new (data_ + size_) T{};
+                    ++size_;
                 }
             }
         }
@@ -330,8 +354,8 @@ namespace bsd {
         }
 
     private:
-        size_t m_size, m_capacity;
-        T* m_data;
+        size_t size_, capacity_;
+        T* data_;
     };
 
     template<typename T>

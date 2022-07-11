@@ -1,6 +1,9 @@
 //
 // Created by adeon on 7/9/22.
 //
+// This is a personal academic project. Dear PVS-Studio, please check it.
+// PVS-Studio Static Code Analyzer for C, C++, C#, and Java: http://www.viva64.com
+
 
 #include "gtest/gtest.h"
 #include "vector_d.hpp"
@@ -27,12 +30,12 @@ TEST_F(VectorTest, EmptyVector) {
 
 TEST_F(VectorTest, SizeCapacityTest) {
     ASSERT_EQ(v1_.size(), 0);
-    ASSERT_EQ(v2_.capacity(), 0);
+    ASSERT_EQ(v1_.capacity(), 0);
     v1_.push_back(1);
     v1_.push_back(2);
     v1_.push_back(3);
     ASSERT_EQ(v1_.size(), 3);
-    ASSERT_EQ(v2_.capacity(), 4);
+    ASSERT_EQ(v1_.capacity(), 4);
 }
 
 TEST_F(VectorTest, ElementAccess) {
@@ -54,20 +57,33 @@ TEST_F(VectorTest, ElementAccess) {
 }
 
 TEST_F(VectorTest, VectorConstruction) {
+    // Multiple element
     bsd::vector_d<int> v{10, 8, 9, 12};
     ASSERT_EQ(v, v2_);
-
+    // Size + fill value
     bsd::vector_d<int> v2(3, 3);
     ASSERT_NE(v, v2);
-
+    // Empty
     bsd::vector_d<int> v3{};
     ASSERT_EQ(v1_, v3);
-
+    // Copy
     bsd::vector_d<int> v4{v2_};
     ASSERT_EQ(v4, v2_);
-
+    // Move
     bsd::vector_d<int> v5{std::move(v2_)};
     ASSERT_NE(v5, v2_);
+    // Iterator interval constructor
+    bsd::vector_d<int> test1{3, 3};
+    bsd::vector_d<int> v6{v2.begin(), v2.end() - 1};
+    ASSERT_EQ(v6, test1);
+    // =
+    v6 = v;
+    ASSERT_EQ(v6, v);
+    // move = (don't know how good is this test)
+    v1_ = std::move(v6);
+    ASSERT_EQ(v1_, v);
+    ASSERT_EQ(v6.data(), nullptr);
+
 }
 
 TEST_F(VectorTest, VectorIterators) {
@@ -95,28 +111,33 @@ TEST_F(VectorTest, VectorEmplace) {
 }
 
 TEST_F(VectorTest, VectorSizeChangeOperations) {
-    v2_.insert(v2_.begin() + 2, 22);
+    auto it1 = v2_.insert(v2_.begin() + 2, 22);
     ASSERT_EQ(v2_.size(), 5);
     ASSERT_EQ(v2_.capacity(), 8);
     ASSERT_EQ(v2_[2], 22);
+    ASSERT_EQ(*it1, 22);
 
-    v2_.insert(v2_.begin() + 5, 122);
+    auto it2 = v2_.insert(v2_.begin() + 5, 122);
     ASSERT_EQ(v2_.size(), 6);
     ASSERT_EQ(v2_.capacity(), 8);
     ASSERT_EQ(*v2_.rbegin(), 122);
+    ASSERT_EQ(*it2, 122);
 
-    v2_.insert(v2_.begin() + 5, 3, 228);
+    auto it3 = v2_.insert(v2_.begin() + 5, 3, 228);
     ASSERT_EQ(v2_.size(), 9);
     ASSERT_EQ(v2_.capacity(), 16);
     ASSERT_EQ(*v2_.rbegin(), 122);
+    ASSERT_EQ(*it3, 228);
 
+    // equality test
     bsd::vector_d<int> t1{10, 8, 22, 9, 12, 228, 228, 228, 122};
     ASSERT_EQ(v2_, t1);
 
-    v2_.erase(v2_.begin() + 1);
+    auto it5 = v2_.erase(v2_.begin() + 1);
     ASSERT_EQ(v2_.size(), 8);
     ASSERT_EQ(v2_.capacity(), 16);
     ASSERT_EQ(*(v2_.begin() + 1), 22);
+    ASSERT_EQ(*it5, 22);
 
     v2_.shrink_to_fit();
     ASSERT_EQ(v2_.size(), 8);
