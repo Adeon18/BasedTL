@@ -19,6 +19,7 @@ namespace bsd {
     public:
         /*
          * For now the constructor just ignores the arr[N+x] elements and does not do compile time checks
+         * Also inserts the given elements and constructs/reconstructs in case of basic types like int, the rest.
          */
         array_d(std::initializer_list<T> l) {
             auto it = l.begin();
@@ -33,7 +34,19 @@ namespace bsd {
             }
         }
 
-        ~array_d()=default;
+        // Call a destructor for each element
+        ~array_d() {
+            for (size_t i = 0; i < N; ++i) {
+                data_[i].~T();
+            }
+        };
+
+        array_d& operator=(const array_d<T, N>& rhs) {
+            for (size_t i = 0; i < N; ++i) {
+                data_[i] = rhs[i];
+            }
+            return *this;
+        }
 
         T& at(size_t pos) {
             if (pos >= N) {
@@ -102,15 +115,15 @@ namespace bsd {
             return const_reverse_iterator(data_ - 1);
         }
 
-        [[nodiscard]] bool is_empty() {
+        [[nodiscard]] bool is_empty() const {
             return (N == 0);
         }
 
-        [[nodiscard]] size_t size() {
+        [[nodiscard]] size_t size() const {
             return N;
         }
         // In arrays, msx_size returns the original array size
-        [[nodiscard]] size_t max_size() {
+        [[nodiscard]] size_t max_size() const {
             return N;
         }
 
@@ -127,6 +140,51 @@ namespace bsd {
     private:
         T data_[N];
     };
+
+    template< class T, std::size_t N >
+    inline bool operator==(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        for (size_t i = 0; i < N; ++i) {
+            if (lhs[i] != rhs[i]) return false;
+        }
+        return true;
+    }
+
+    template< class T, std::size_t N >
+    inline bool operator!=(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        return !(lhs == rhs);
+    }
+
+    template< class T, std::size_t N >
+    inline bool operator<(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        for (size_t i = 0; i < N; ++i) {
+            if (lhs[i] >= rhs[i]) return false;
+        }
+        return true;
+    }
+
+    template< class T, std::size_t N >
+    inline bool operator<=(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        for (size_t i = 0; i < N; ++i) {
+            if (lhs[i] > rhs[i]) return false;
+        }
+        return true;
+    }
+
+    template< class T, std::size_t N >
+    inline bool operator>(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        for (size_t i = 0; i < N; ++i) {
+            if (lhs[i] <= rhs[i]) return false;
+        }
+        return true;
+    }
+
+    template< class T, std::size_t N >
+    inline bool operator>=(const bsd::array_d<T, N>& lhs, const bsd::array_d<T, N>& rhs ) {
+        for (size_t i = 0; i < N; ++i) {
+            if (lhs[i] < rhs[i]) return false;
+        }
+        return true;
+    }
 }
 
 

@@ -6,7 +6,7 @@ What is implemented at the moment:
   - [x] vector_d
   - [ ] deque_d
   - [ ] list_d
-  - [ ] array_d
+  - [x] array_d
   - [ ] unordered_map_d
 
 - Iterators
@@ -20,6 +20,11 @@ What is implemented at the moment:
   - [ ] sort_d
   - [ ] mapreduce_d
   - [ ] copy_d
+
+- Smart Pointers
+  - [ ] unique_ptr_d
+  - [ ] shared_ptr_d
+  - [ ] weak_ptr_d
 
 - Custom:
   - [x] ratio_d - rational number type.
