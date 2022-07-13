@@ -57,7 +57,7 @@ include(cmake/CompilerWarnings.cmake)
 add_subdirectory(Gtest)
 
 #! Project main executable source compilation
-add_executable(${PROJECT_NAME} main.cpp include/vector_d.hpp include/ratiod_t.hpp src/ratio_d_t.cpp include/iterators.hpp)
+add_executable(${PROJECT_NAME} main.cpp include/vector_d.hpp include/ratiod_t.hpp src/ratio_d_t.cpp include/iterators.hpp include/memory/unique_ptr_d.hpp)
 
 #! Put path to your project headers
 target_include_directories(${PROJECT_NAME} PRIVATE options_parser include)
