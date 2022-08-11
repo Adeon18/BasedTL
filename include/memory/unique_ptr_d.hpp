@@ -6,7 +6,8 @@
 #define TEMPLATE_UNIQUE_PTR_D_HPP
 
 namespace bsd {
-    template<typename T>
+    // For no only supports default deleter
+    template<typename T, typename D=std::default_delete<T>>
     class unique_ptr_d {
         using pointer = T*;
     public:
@@ -15,21 +16,21 @@ namespace bsd {
         explicit unique_ptr_d(T* arg) : ptr_{arg} {}
 
         unique_ptr_d(unique_ptr_d&& upd) noexcept {
-            ptr_ = upd->ptr;
-            upd->ptr = nullptr;
+            ptr_ = upd.ptr_;
+            upd.ptr_ = nullptr;
         }
 
         unique_ptr_d(const unique_ptr_d& upd) = delete;
 
         ~unique_ptr_d() {
-            delete(ptr_);
+            get_deleter()(ptr_);
         }
 
         unique_ptr_d& operator=(const unique_ptr_d& upd) = delete;
 
         unique_ptr_d& operator=(unique_ptr_d&& upd) noexcept {
-            ptr_ = upd->ptr;
-            upd->ptr = nullptr;
+            ptr_ = upd.ptr_;
+            upd.ptr_ = nullptr;
             return *this;
         };
 
@@ -39,20 +40,29 @@ namespace bsd {
             return old_ptr;
         }
         // For now without the deleter
-        T* reset(pointer ptr = pointer()) {
+        void reset(pointer ptr = pointer()) {
             pointer old_ptr = ptr_;
             ptr_ = ptr;
-            delete(old_ptr);
+            get_deleter()(old_ptr);
         }
         // TODO: Swap deletors as well
-        unique_ptr_d swap(unique_ptr_d& upd) {
+        void swap(unique_ptr_d& upd) {
             T* swap_ptr = ptr_;
             ptr_ = upd.ptr_;
             upd.ptr_ = swap_ptr;
+
         }
 
-        pointer get() {
+        pointer get() const noexcept {
             return ptr_;
+        }
+
+        D& get_deleter() noexcept {
+            return deleter_;
+        }
+
+        const D& get_deleter() const noexcept {
+            return deleter_;
         }
 
         explicit operator bool() const noexcept {
@@ -67,11 +77,100 @@ namespace bsd {
             return get();
         }
 
-
-
     private:
         T* ptr_;
+        D deleter_;
     };
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator ==(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return lhs.get() == rhs.get();
+    }
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator !=(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return !(lhs == rhs);
+    }
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator <(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return lhs.get() < rhs.get();
+    }
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator >=(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return !(lhs < rhs);
+    }
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator >(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return rhs < lhs;
+    }
+
+    template<typename T1, typename D1, typename T2, typename D2>
+    bool operator <=(const unique_ptr_d<T1, D1>& lhs, const unique_ptr_d<T2, D2>& rhs) {
+        return !(lhs > rhs);
+    }
+
+    template<typename T, typename D>
+    bool operator ==(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return !lhs.get();
+    }
+
+    template<typename T, typename D>
+    bool operator !=(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return !(lhs == nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator <(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return lhs.get() < nullptr;
+    }
+
+    template<typename T, typename D>
+    bool operator >=(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return !(lhs < nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator >(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return (lhs.get() > nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator <=(const unique_ptr_d<T, D>& lhs, std::nullptr_t) {
+        return !(lhs > nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator ==(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return !rhs.get();
+    }
+
+    template<typename T, typename D>
+    bool operator !=(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return !(rhs == nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator <(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return nullptr < rhs;
+    }
+
+    template<typename T, typename D>
+    bool operator >=(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return !(nullptr < rhs);
+    }
+
+    template<typename T, typename D>
+    bool operator >(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return (rhs.get() < nullptr);
+    }
+
+    template<typename T, typename D>
+    bool operator <=(nullptr_t, unique_ptr_d<T, D>& rhs) {
+        return !(rhs < nullptr);
+    }
 }
 
 #endif //TEMPLATE_UNIQUE_PTR_D_HPP
